@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Recordatorios & Tareas</title>
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/906/906334.png">
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #f8fafc; margin: 0; padding: 1rem; color: #1e293b; display: flex; justify-content: center; min-height: 100vh; align-items: flex-start; }
+    .app-card { width: 100%; max-width: 520px; background: #ffffff; padding: 1.5rem; border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05); border: 1px solid #f1f5f9; }
+    
+    h1 { margin: 0 0 1rem 0; color: #4f46e5; font-size: 1.4rem; text-align: center; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    
+    .btn-install { display: none; width: 100%; background: #10b981; color: white; border: none; padding: 0.85rem; border-radius: 12px; font-weight: 600; margin-bottom: 1.25rem; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+    .btn-install:hover { background: #059669; }
+
+    /* Panel de Resumen */
+    .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 12px; text-align: center; }
+    .summary-card .number { display: block; font-size: 1.25rem; font-weight: 700; color: #4f46e5; }
+    .summary-card .label { font-size: 0.75rem; color: #64748b; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-card.alert .number { color: #ef4444; }
+
+    /* Formulario */
+    form { display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 1.75rem; background: #f8fafc; padding: 1rem; border-radius: 14px; border: 1px solid #e2e8f0; }
+    .input-group { display: flex; flex-direction: column; gap: 0.3rem; }
+    label { font-size: 0.8rem; font-weight: 600; color: #475569; }
+    input { padding: 0.75rem; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 0.95rem; outline: none; background: #fff; transition: all 0.2s; }
+    input:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    
+    .btn-submit { background: #4f46e5; color: white; border: none; padding: 0.85rem; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.95rem; transition: background 0.2s; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
+    .btn-submit:hover { background: #4338ca; }
+
+    /* Lista de tareas */
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .section-title { font-size: 1rem; font-weight: 600; color: #334151; }
+    
+    ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 0.75rem; max-height: 350px; overflow-y: auto; }
+    
+    li { background: #ffffff; border: 1px solid #e2e8f0; padding: 0.85rem 1rem; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.1s, box-shadow 0.1s; }
+    li:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+    li.overdue { border-left: 4px solid #ef4444; background: #fef2f2; }
+    li.today { border-left: 4px solid #f59e0b; }
+
+    .task-details { display: flex; flex-direction: column; gap: 0.2rem; }
+    .task-title { font-weight: 600; font-size: 0.95rem; color: #0f172a; }
+    .task-date { font-size: 0.78rem; color: #64748b; display: flex; align-items: center; gap: 0.3rem; }
+    
+    .btn-delete { background: #fee2e2; color: #dc2626; border: none; padding: 0.45rem 0.65rem; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: background 0.2s; }
+    .btn-delete:hover { background: #fecaca; }
+    
+    .empty-state { text-align: center; color: #94a3b8; padding: 2rem 0; font-size: 0.9rem; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1; }
+  </style>
+</head>
+<body>
+  <div class="app-card">
+    <button id="btnInstall" class="btn-install">📲 Instalar App en Dispositivo</button>
+    <h1>⏰ Mis Recordatorios</h1>
+
+    <!-- Panel de Resumen -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <span class="number" id="countPending">0</span>
+        <span class="label">Pendientes</span>
+      </div>
+      <div class="summary-card">
+        <span class="number" id="countToday">0</span>
+        <span class="label">Para hoy</span>
+      </div>
+      <div class="summary-card alert">
+        <span class="number" id="countOverdue">0</span>
+        <span class="label">Vencidas</span>
+      </div>
+    </div>
+
+    <!-- Formulario -->
+    <form id="taskForm">
+      <div class="input-group">
+        <label for="title">¿Qué necesitas recordar?</label>
+        <input type="text" id="title" placeholder="Ej. Reunión de trabajo, Comprar pan..." required>
+      </div>
+      <div class="input-group">
+        <label for="datetime">Fecha y Hora</label>
+        <input type="datetime-local" id="datetime" required>
+      </div>
+      <button type="submit" class="btn-submit">Guardar Recordatorio</button>
+    </form>
+
+    <div class="section-header">
+      <span class="section-title">Lista de Tareas</span>
+    </div>
+    <ul id="taskList"></ul>
+  </div>
+
+  <script>
+    // Registro automático de Service Worker vía Blob
+    if ('serviceWorker' in navigator) {
+      const swCode = `
+        self.addEventListener('install', (e) => self.skipWaiting());
+        self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
+        self.addEventListener('fetch', (e) => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));
+      `;
+      const blob = new Blob([swCode], { type: 'text/javascript' });
+      navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(() => {});
+    }
+
+    // Configuración de Manifiesto PWA Dinámico
+    let deferredPrompt;
+    const btnInstall = document.getElementById('btnInstall');
+
+    const manifestData = {
+      name: "Recordatorios y Alarmas",
+      short_name: "Recordatorios",
+      start_url: window.location.href,
+      display: "standalone",
+      background_color: "#ffffff",
+      theme_color: "#4f46e5",
+      orientation: "portrait",
+      icons: [{ src: "https://cdn-icons-png.flaticon.com/512/906/906334.png", sizes: "512x512", type: "image/png" }]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+    const manifestLink = document.createElement('link');
+    manifestLink.rel = 'manifest';
+    manifestLink.href = URL.createObjectURL(manifestBlob);
+    document.head.appendChild(manifestLink);
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      btnInstall.style.display = 'block';
+    });
+
+    btnInstall.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') btnInstall.style.display = 'none';
+        deferredPrompt = null;
+      }
+    });
+
+    // Permisos de Notificación
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    // Lógica de Tareas
+    const taskForm = document.getElementById('taskForm');
+    const taskList = document.getElementById('taskList');
+    const activeTimeouts = new Map();
+
+    let tasks = JSON.parse(localStorage.getItem('app_tasks_db')) || [];
+
+    function saveTasks() {
+      localStorage.setItem('app_tasks_db', JSON.stringify(tasks));
+      renderTasks();
+      updateSummary();
+    }
+
+    function scheduleAlarm(task) {
+      if (activeTimeouts.has(task.id)) {
+        clearTimeout(activeTimeouts.get(task.id));
+        activeTimeouts.delete(task.id);
+      }
+
+      const now = Date.now();
+      const taskTime = new Date(task.datetime).getTime();
+      const delay = taskTime - now;
+
+      if (delay > 0) {
+        const timerId = setTimeout(() => {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('⏰ Recordatorio', {
+              body: task.title,
+              icon: 'https://cdn-icons-png.flaticon.com/512/906/906334.png',
+              requireInteraction: true
+            });
+          } else {
+            alert(`⏰ RECORDATORIO:\n${task.title}`);
+          }
+        }, delay);
+        activeTimeouts.set(task.id, timerId);
+      }
+    }
+
+    function updateSummary() {
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      let pending = tasks.length;
+      let todayCount = 0;
+      let overdueCount = 0;
+
+      tasks.forEach(task => {
+        const taskDateObj = new Date(task.datetime);
+        const taskDateStr = task.datetime.split('T')[0];
+
+        if (taskDateObj < now) {
+          overdueCount++;
+        } else if (taskDateStr === todayStr) {
+          todayCount++;
+        }
+      });
+
+      document.getElementById('countPending').textContent = pending;
+      document.getElementById('countToday').textContent = todayCount;
+      document.getElementById('countOverdue').textContent = overdueCount;
+    }
+
+    function renderTasks() {
+      taskList.innerHTML = '';
+
+      if (tasks.length === 0) {
+        taskList.innerHTML = '<div class="empty-state">No tienes tareas pendientes 🎉</div>';
+        updateSummary();
+        return;
+      }
+
+      tasks.sort((a, b) => new Date(a.datetime) - new Date(b.datetime));
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+
+      tasks.forEach((task) => {
+        const li = document.createElement('li');
+        const taskDateObj = new Date(task.datetime);
+        const taskDateStr = task.datetime.split('T')[0];
+
+        let statusClass = '';
+        if (taskDateObj < now) {
+          statusClass = 'overdue';
+        } else if (taskDateStr === todayStr) {
+          statusClass = 'today';
+        }
+        if (statusClass) li.classList.add(statusClass);
+
+        const dateFormatted = taskDateObj.toLocaleString([], {
+          dateStyle: 'medium',
+          timeStyle: 'short'
+        });
+
+        li.innerHTML = `
+          <div class="task-details">
+            <span class="task-title">${escapeHtml(task.title)}</span>
+            <span class="task-date">📅 ${dateFormatted}</span>
+          </div>
+          <button class="btn-delete" onclick="deleteTask('${task.id}')">Eliminar</button>
+        `;
+        taskList.appendChild(li);
+      });
+
+      updateSummary();
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'
+      }[m]));
+    }
+
+    taskForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const titleInput = document.getElementById('title');
+      const datetimeInput = document.getElementById('datetime');
+
+      const newTask = {
+        id: Date.now().toString(),
+        title: titleInput.value.trim(),
+        datetime: datetimeInput.value
+      };
+
+      tasks.push(newTask);
+      scheduleAlarm(newTask);
+      saveTasks();
+
+      titleInput.value = '';
+      datetimeInput.value = '';
+    });
+
+    window.deleteTask = function (id) {
+      if (activeTimeouts.has(id)) {
+        clearTimeout(activeTimeouts.get(id));
+        activeTimeouts.delete(id);
+      }
+      tasks = tasks.filter((task) => task.id !== id);
+      saveTasks();
+    };
+
+    // Inicializar
+    tasks.forEach(scheduleAlarm);
+    renderTasks();
+  </script>
+</body>
+</html>
